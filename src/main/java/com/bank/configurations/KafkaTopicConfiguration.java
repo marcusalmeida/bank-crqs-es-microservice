@@ -1,4 +1,4 @@
-package com.bank.configuration;
+package com.bank.configurations;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,7 +15,7 @@ import org.springframework.kafka.core.KafkaAdmin;
 @Slf4j
 @RequiredArgsConstructor
 public class KafkaTopicConfiguration {
-    @Value(value = "${kafka.bootstrapServers:localhost:9093}")
+    @Value(value = "${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
     @Value(value = "${microservice.kafka.topics.bank-account-event-store:bank-account-event-store}")

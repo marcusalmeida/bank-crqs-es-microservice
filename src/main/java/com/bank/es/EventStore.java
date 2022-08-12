@@ -178,7 +178,7 @@ public class EventStore implements EventStoreDB {
     public void saveEvents(@SpanTag("events") List<Event> events) {
         if (events.isEmpty()) return;
 
-        final List<Event> changes = new ArrayList<>();
+        final List<Event> changes = new ArrayList<>(events);
         if (changes.size() > 1) {
             this.eventsBatchInsert(changes);
             return;

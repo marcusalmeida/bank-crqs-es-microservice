@@ -27,12 +27,12 @@ public class KafkaEventBus implements EventBus {
     public void publish(@SpanTag("events") List<Event> events) {
         final byte[] eventsBytes =
                 SerializerUtils.serializeToJsonBytes(events.toArray(new Event[] {}));
-        final ProducerRecord<String, byte[]> record =
+        final ProducerRecord<String, byte[]> _record =
                 new ProducerRecord<>(bankAccountTopicName, eventsBytes);
 
         try {
-            kafkaTemplate.send(record).get(sendTimeout, TimeUnit.MILLISECONDS);
-            log.info("publish kafka record value >>>>> {}", new String(record.value()));
+            kafkaTemplate.send(_record).get(sendTimeout, TimeUnit.MILLISECONDS);
+            log.info("publish kafka record value >>>>> {}", new String(_record.value()));
         } catch (Exception ex) {
             log.error("(KafkaEventBus) publish get timeout", ex);
             throw new RuntimeException(ex);

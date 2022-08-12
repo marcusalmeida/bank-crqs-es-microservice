@@ -1,4 +1,4 @@
-package com.bank.configuration;
+package com.bank.configurations;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +22,7 @@ import org.springframework.util.backoff.FixedBackOff;
 @EnableKafka
 public class KafkaConsumerConfig {
 
-    @Value(value = "${kafka.bootstrapServers:localhost:9093}")
+    @Value(value = "${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
     private final KafkaConfigProperties kafkaConfigProperties;

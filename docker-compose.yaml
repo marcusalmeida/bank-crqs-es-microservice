@@ -1,0 +1,156 @@
+version: "3.9"
+
+services:
+  microservice:
+    build: .
+    image: microservice:latest
+    container_name: microservice
+    expose:
+      - "8006"
+    ports:
+      - "8006:8006"
+    restart: on-failure
+    links:
+      - kafka
+      - postgresql
+    depends_on:
+      - mongodb
+      - postgresql
+      - kafka
+      - jaeger
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    networks: [ "microservices" ]
+
+  # Databases
+  postgresql:
+    image: postgres:14.2-alpine
+    container_name: postgresql
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=microservices
+      - POSTGRES_HOST=5432
+    command: -p 5432
+    volumes:
+      - ./data/pgdata:/var/lib/postgresql/data
+    networks: [ "microservices" ]
+
+  mongodb:
+    image: docker.io/bitnami/mongodb:4.4
+    restart: always
+    container_name: mongodb
+    environment:
+      MONGODB_ROOT_USER: admin
+      MONGODB_ROOT_PASSWORD: admin
+      BITNAMI_DEBUG: "false"
+      ALLOW_EMPTY_PASSWORD: "no"
+      MONGODB_SYSTEM_LOG_VERBOSITY: "0"
+      MONGODB_DISABLE_SYSTEM_LOG: "no"
+      MONGODB_DISABLE_JAVASCRIPT: "no"
+      MONGODB_ENABLE_JOURNAL: "yes"
+      MONGODB_ENABLE_IPV6: "no"
+      MONGODB_ENABLE_DIRECTORY_PER_DB: "no"
+      MONGODB_DATABASE: "microservices"
+    volumes:
+      - ./data/mongodb_data_container:/data/db
+    ports:
+      - "27017:27017"
+    networks: [ "microservices" ]
+
+  # Message Broker
+  zookeeper:
+    image: 'bitnami/zookeeper:3.8.0'
+    container_name: zookeper
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    volumes:
+      - "./data/zookeeper:/zookeeper"
+    networks: [ "microservices" ]
+
+  kafka:
+    image: 'bitnami/kafka:3.0.1'
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=INTERNAL://:9092,EXTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://localhost:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+    depends_on:
+      - zookeeper
+    networks: [ "microservices" ]
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafdrop
+    ports:
+      - 9000:9000
+    environment:
+      KAFKA_BROKERCONNECT: kafka:9092
+    depends_on:
+      - kafka
+    networks: [ "microservices" ]
+
+  # Observability
+  grafana:
+    container_name: grafana
+    restart: always
+    image: grafana/grafana-oss:latest
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini
+    ports:
+      - '3000:3000'
+    networks: [ "microservices" ]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.console.libraries=/etc/prometheus/console_libraries
+      - --web.console.templates=/etc/prometheus/consoles
+      - --web.enable-lifecycle
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks: [ "microservices" ]
+
+  jaeger:
+    container_name: jaeger
+    restart: always
+    image: jaegertracing/all-in-one:1.21
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    networks: [ "microservices" ]
+
+networks:
+  microservices:
+    name: microservices
